@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Singlish Bubble Pop! 🫧</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;900&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --teal:   #1D9E75;
+      --blue:   #185FA5;
+      --purple: #534AB7;
+      --pink:   #D4537E;
+      --coral:  #D85A30;
+      --amber:  #BA7517;
+    }
+
+    body {
+      font-family: 'Nunito', sans-serif;
+      background: #0a1628;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      overflow: hidden;
+    }
+
+    /* Starfield bg */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 20% 30%, rgba(29,158,117,0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 70%, rgba(83,74,183,0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(24,95,165,0.1) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    #app {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 680px;
+      padding: 0 12px 12px;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 4px 10px;
+      flex-shrink: 0;
+    }
+
+    .logo {
+      font-size: 26px;
+      font-weight: 900;
+      color: #fff;
+      letter-spacing: -0.5px;
+      line-height: 1;
+    }
+    .logo span { color: var(--teal); }
+
+    .hud {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .hud-card {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 6px 14px;
+      text-align: center;
+      min-width: 70px;
+    }
+    .hud-card .label {
+      font-size: 10px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.45);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .hud-card .value {
+      font-size: 22px;
+      font-weight: 900;
+      color: #fff;
+      line-height: 1.1;
+    }
+
+    #streak-badge {
+      font-size: 13px;
+      font-weight: 700;
+      color: #FFD166;
+      background: rgba(255,209,102,0.12);
+      border: 1px solid rgba(255,209,102,0.3);
+      border-radius: 20px;
+      padding: 4px 12px;
+      min-width: 90px;
+      text-align: center;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    #streak-badge.visible { opacity: 1; }
+
+    /* ── Game canvas ── */
+    #game-container {
+      position: relative;
+      flex: 1;
+      border-radius: 20px;
+      overflow: hidden;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      cursor: default;
+    }
+
+    /* Subtle grid overlay */
+    #game-container::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+    }
+
+    /* ── Bubbles ── */
+    .bubble {
+      position: absolute;
+      border-radius: 50%;
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.12s ease;
+      will-change: transform, left, top;
+    }
+    .bubble:hover { transform: scale(1.1); }
+    .bubble:active { transform: scale(0.92); }
+
+    .bubble-inner {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+    }
+    /* Specular highlight */
+    .bubble-shine {
+      position: absolute;
+      width: 32%;
+      height: 28%;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.55);
+      top: 13%;
+      left: 16%;
+      transform: rotate(-35deg);
+      pointer-events: none;
+    }
+    .bubble-shine2 {
+      position: absolute;
+      width: 12%;
+      height: 10%;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.35);
+      bottom: 18%;
+      right: 20%;
+      pointer-events: none;
+    }
+
+    /* ── Pop effects ── */
+    .pop-text {
+      position: absolute;
+      font-family: 'Nunito', sans-serif;
+      font-weight: 900;
+      pointer-events: none;
+      white-space: nowrap;
+      animation: popFloat 1.4s ease-out forwards;
+      z-index: 20;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.4);
+    }
+    @keyframes popFloat {
+      0%   { opacity: 0; transform: translateY(0) scale(0.5); }
+      20%  { opacity: 1; transform: translateY(-12px) scale(1.15); }
+      80%  { opacity: 1; transform: translateY(-48px) scale(1); }
+      100% { opacity: 0; transform: translateY(-72px) scale(0.9); }
+    }
+
+    .burst-ring {
+      position: absolute;
+      border-radius: 50%;
+      pointer-events: none;
+      animation: burstRing 0.45s ease-out forwards;
+      z-index: 15;
+    }
+    @keyframes burstRing {
+      0%   { opacity: 0.8; transform: scale(0.4); }
+      100% { opacity: 0; transform: scale(2.4); }
+    }
+
+    .spark {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 15;
+      animation: sparkFly 0.55s ease-out forwards;
+    }
+    @keyframes sparkFly {
+      0%   { opacity: 1; transform: translate(0,0) scale(1); }
+      100% { opacity: 0; transform: translate(var(--sx), var(--sy)) scale(0); }
+    }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      padding: 8px 0 4px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.2);
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="logo">Bubble<span>Pop</span> 🫧</div>
+    <div class="hud">
+      <div id="streak-badge">🔥 3 combo!</div>
+      <div class="hud-card">
+        <div class="label">Score</div>
+        <div class="value" id="score">0</div>
+      </div>
+    </div>
+  </header>
+
+  <div id="game-container"></div>
+
+  <footer>Click the bubbles • Build combos • Shiok lah!</footer>
+</div>
+
+<script>
+const SINGLISH = [
+  { word: "Shiok!", color: "#2DD4A0" },
+  { word: "Syok lah!", color: "#60AEFF" },
+  { word: "Wah lau!", color: "#FF8A60" },
+  { word: "Steady!", color: "#A89BFF" },
+  { word: "Can!", color: "#2DD4A0" },
+  { word: "Atas!", color: "#FFD166" },
+  { word: "Shiok shiok!", color: "#FF85B3" },
+  { word: "Power lah!", color: "#60AEFF" },
+  { word: "So good can die!", color: "#FF8A60" },
+  { word: "Jialat... so fun!", color: "#A89BFF" },
+  { word: "Alamak, nice!", color: "#FFD166" },
+  { word: "Bojio?!", color: "#2DD4A0" },
+  { word: "Best lah!", color: "#FF85B3" },
+  { word: "Confirm plus chope!", color: "#60AEFF" },
+  { word: "Wah, shiok!", color: "#2DD4A0" },
+  { word: "Siao, fun leh!", color: "#FF8A60" },
+  { word: "Majulah!", color: "#A89BFF" },
+  { word: "Sedap!", color: "#2DD4A0" },
+  { word: "Ho seh!", color: "#60AEFF" },
+  { word: "Walao, power!", color: "#FF85B3" },
+  { word: "Shiok man!", color: "#FFD166" },
+  { word: "Geng leh!", color: "#2DD4A0" },
+  { word: "Die die must pop!", color: "#FF8A60" },
+  { word: "Buay paiseh!", color: "#A89BFF" },
+  { word: "Shiok until faint!", color: "#FFD166" },
+];
+
+const BUBBLE_STYLES = [
+  { fill: "rgba(29,158,117,0.18)",  border: "rgba(45,212,160,0.7)",  glow: "#1D9E75" },
+  { fill: "rgba(24,95,165,0.18)",   border: "rgba(96,174,255,0.7)",  glow: "#185FA5" },
+  { fill: "rgba(83,74,183,0.18)",   border: "rgba(168,155,255,0.7)", glow: "#534AB7" },
+  { fill: "rgba(212,83,126,0.18)",  border: "rgba(255,133,179,0.7)", glow: "#D4537E" },
+  { fill: "rgba(216,90,48,0.18)",   border: "rgba(255,138,96,0.7)",  glow: "#D85A30" },
+  { fill: "rgba(186,117,23,0.18)",  border: "rgba(255,209,102,0.7)", glow: "#BA7517" },
+];
+
+const container = document.getElementById("game-container");
+const scoreEl   = document.getElementById("score");
+const streakEl  = document.getElementById("streak-badge");
+
+let score  = 0;
+let streak = 0;
+let bubbles = [];
+let animId  = null;
+
+function rand(a, b) { return a + Math.random() * (b - a); }
+function randInt(a, b) { return Math.floor(rand(a, b)); }
+
+function makeBubble() {
+  const W = container.offsetWidth;
+  const H = container.offsetHeight;
+  const size = rand(54, 92);
+  const x = rand(8, W - size - 8);
+  const y = rand(8, H - size - 8);
+  const style = BUBBLE_STYLES[randInt(0, BUBBLE_STYLES.length)];
+  const speed = rand(0.28, 0.68);
+  const dirX  = (Math.random() < 0.5 ? 1 : -1) * rand(0.3, 0.85);
+  const dirY  = (Math.random() < 0.5 ? 1 : -1) * rand(0.25, 0.7);
+
+  const el = document.createElement("div");
+  el.className = "bubble";
+  el.style.cssText = `
+    width:${size}px; height:${size}px;
+    left:${x}px; top:${y}px;
+    background: ${style.fill};
+    border: 1.5px solid ${style.border};
+    box-shadow: 0 0 18px ${style.glow}44, inset 0 0 12px rgba(255,255,255,0.1);
+  `;
+
+  el.innerHTML = `
+    <div class="bubble-inner"></div>
+    <div class="bubble-shine"></div>
+    <div class="bubble-shine2"></div>
+  `;
+
+  const bdata = { el, x, y, size, dirX, dirY, speed, style };
+  el.addEventListener("click", e => { e.stopPropagation(); popBubble(bdata); });
+  container.appendChild(el);
+  bubbles.push(bdata);
+}
+
+function popBubble(bdata) {
+  const idx = bubbles.indexOf(bdata);
+  if (idx === -1) return;
+  bubbles.splice(idx, 1);
+  bdata.el.remove();
+
+  score++;
+  streak++;
+  scoreEl.textContent = score;
+
+  if (streak >= 3) {
+    streakEl.textContent = `🔥 ${streak} combo!`;
+    streakEl.classList.add("visible");
+  } else {
+    streakEl.classList.remove("visible");
+  }
+
+  // Burst ring
+  const ring = document.createElement("div");
+  ring.className = "burst-ring";
+  ring.style.cssText = `
+    width:${bdata.size}px; height:${bdata.size}px;
+    left:${bdata.x}px; top:${bdata.y}px;
+    border: 2px solid ${bdata.style.border};
+    background: ${bdata.style.fill};
+  `;
+  container.appendChild(ring);
+  setTimeout(() => ring.remove(), 460);
+
+  // Sparks
+  const cx = bdata.x + bdata.size / 2;
+  const cy = bdata.y + bdata.size / 2;
+  for (let i = 0; i < 7; i++) {
+    const spark = document.createElement("div");
+    spark.className = "spark";
+    const angle = (i / 7) * Math.PI * 2;
+    const dist  = rand(30, 65);
+    spark.style.cssText = `
+      left:${cx - 2}px; top:${cy - 2}px;
+      background:${bdata.style.border};
+      --sx:${Math.cos(angle) * dist}px;
+      --sy:${Math.sin(angle) * dist}px;
+      animation-delay:${rand(0, 0.06)}s;
+    `;
+    container.appendChild(spark);
+    setTimeout(() => spark.remove(), 620);
+  }
+
+  // Singlish word
+  const pick = SINGLISH[randInt(0, SINGLISH.length)];
+  const pop = document.createElement("div");
+  pop.className = "pop-text";
+  pop.textContent = pick.word;
+  const fontSize = streak >= 5 ? 26 : streak >= 3 ? 22 : 18;
+  pop.style.cssText = `
+    left:${cx}px; top:${bdata.y}px;
+    color:${pick.color};
+    font-size:${fontSize}px;
+    transform-origin: center;
+    transform: translateX(-50%);
+  `;
+  container.appendChild(pop);
+  setTimeout(() => pop.remove(), 1450);
+
+  setTimeout(makeBubble, 500);
+}
+
+function animate() {
+  const W = container.offsetWidth;
+  const H = container.offsetHeight;
+  bubbles.forEach(b => {
+    b.x += b.dirX * b.speed;
+    b.y += b.dirY * b.speed;
+    if (b.x <= 0)          { b.dirX =  Math.abs(b.dirX); b.x = 0; }
+    if (b.x >= W - b.size) { b.dirX = -Math.abs(b.dirX); b.x = W - b.size; }
+    if (b.y <= 0)          { b.dirY =  Math.abs(b.dirY); b.y = 0; }
+    if (b.y >= H - b.size) { b.dirY = -Math.abs(b.dirY); b.y = H - b.size; }
+    b.el.style.left = b.x + "px";
+    b.el.style.top  = b.y + "px";
+  });
+  animId = requestAnimationFrame(animate);
+}
+
+// Miss click resets streak
+container.addEventListener("click", () => {
+  streak = 0;
+  streakEl.classList.remove("visible");
+});
+
+// Init
+const INITIAL_COUNT = 9;
+for (let i = 0; i < INITIAL_COUNT; i++) {
+  setTimeout(makeBubble, i * 120);
+}
+animate();
+</script>
+</body>
+</html>
